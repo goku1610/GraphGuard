@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GraphGuard Live Viewer</title>
+  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/3d-force-graph@1.76.0/dist/3d-force-graph.min.js"></script>
+  <style>
+    :root {
+      --bg: #08111f;
+      --panel: rgba(10, 19, 34, 0.88);
+      --panel-border: rgba(111, 168, 255, 0.18);
+      --text: #ecf4ff;
+      --muted: #8fa8c7;
+      --accent: #6fb7ff;
+      --success: #55d39a;
+      --warn: #ffc85a;
+      --danger: #ff7d7d;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top, rgba(46, 120, 220, 0.24), transparent 34%),
+        linear-gradient(160deg, #040a14, #08111f 45%, #040a14);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 340px 1fr 360px;
+      gap: 16px;
+      padding: 16px;
+      min-height: 100vh;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 18px;
+      padding: 18px;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .title {
+      font-size: 14px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .big {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(111, 183, 255, 0.12);
+      color: var(--accent);
+      margin-bottom: 18px;
+      font-size: 14px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+
+    .button {
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      color: #03111f;
+      background: linear-gradient(135deg, #6fb7ff, #9fd2ff);
+      transition: transform 120ms ease, opacity 120ms ease;
+    }
+
+    .button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .button:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+
+    .custom-box {
+      margin-bottom: 14px;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .input-label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .text-input {
+      width: 100%;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(3, 9, 18, 0.75);
+      color: #dce8f7;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+      margin-bottom: 8px;
+      resize: vertical;
+      min-height: 36px;
+      font-family: "Segoe UI", sans-serif;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .metric {
+      padding: 12px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .metric-value {
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .block {
+      margin-top: 16px;
+    }
+
+    .text-box {
+      white-space: pre-wrap;
+      line-height: 1.45;
+      font-size: 14px;
+      color: #dce8f7;
+      max-height: 260px;
+      overflow: auto;
+    }
+
+    .event-feed {
+      display: grid;
+      gap: 8px;
+      max-height: 280px;
+      overflow: auto;
+    }
+
+    .event-row {
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 13px;
+      line-height: 1.45;
+      color: #dce8f7;
+    }
+
+    .subtle {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .history-list {
+      display: grid;
+      gap: 8px;
+      max-height: 220px;
+      overflow: auto;
+    }
+
+    .history-item {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.03);
+      color: #dce8f7;
+      padding: 8px 10px;
+      text-align: left;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .history-item.active {
+      border-color: rgba(255, 200, 90, 0.7);
+      background: rgba(255, 200, 90, 0.1);
+      color: #fff2cf;
+    }
+
+    .graph-panel {
+      display: flex;
+      flex-direction: column;
+    }
+
+    #graph {
+      flex: 1;
+      min-height: 70vh;
+      border-radius: 18px;
+      background: rgba(5, 10, 18, 0.76);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .lookback-track {
+      height: 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .lookback-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--warn), var(--success));
+      transition: width 180ms ease-out;
+    }
+
+    .legend {
+      display: flex;
+      gap: 14px;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      display: inline-block;
+      margin-right: 6px;
+    }
+
+    .footer-note {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 1200px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+
+      #graph {
+        min-height: 56vh;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="panel">
+      <div class="title">Run</div>
+      <div class="big" id="runTitle">Waiting for collector</div>
+      <div class="status" id="statusPill">idle</div>
+      <div class="controls">
+        <button class="button" id="startButton">Start Live Run</button>
+        <button class="button" id="skipButton">Skip Current</button>
+        <button class="button" id="stopButton">Stop Run</button>
+        <button class="button" id="backToLiveButton">Back To Live Run</button>
+      </div>
+      <div class="custom-box">
+        <label class="input-label" for="customPromptInput">Custom Prompt</label>
+        <textarea class="text-input" id="customPromptInput" placeholder="Type your question/prompt"></textarea>
+        <label class="input-label" for="customContextInput">Custom Context (optional)</label>
+        <textarea class="text-input" id="customContextInput" placeholder="Add context passage for lookback testing"></textarea>
+        <label class="input-label" for="customGoldInput">Gold Answer (optional, for correctness)</label>
+        <input class="text-input" id="customGoldInput" placeholder="Expected answer">
+        <button class="button" id="startCustomButton">Run Custom Example</button>
+      </div>
+      <div class="subtle" id="processLine">Collector is idle.</div>
+
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-label">Nodes</div>
+          <div class="metric-value" id="nodeCount">0</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Edges</div>
+          <div class="metric-value" id="edgeCount">0</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Sample</div>
+          <div class="metric-value" id="sampleId">-</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Progress</div>
+          <div class="metric-value" id="progressCount">0 / 0</div>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="title">Lookback Ratio</div>
+        <div id="lookbackLabel">No decode steps yet</div>
+        <div class="lookback-track">
+          <div class="lookback-fill" id="lookbackFill"></div>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="title">Prompt</div>
+        <div class="text-box" id="promptText">No active sample.</div>
+      </div>
+
+      <div class="block">
+        <div class="title">Current Result</div>
+        <div class="text-box" id="sampleStatusText">No sample started.</div>
+      </div>
+
+      <div class="block">
+        <div class="title">Session History</div>
+        <div class="history-list" id="historyList"></div>
+      </div>
+    </section>
+
+    <section class="panel graph-panel">
+      <div class="title">Live Reasoning Graph</div>
+      <div id="graph"></div>
+      <div class="legend">
+        <div><span class="dot" style="background:#6fb7ff;"></span>generated node</div>
+        <div><span class="dot" style="background:#ffc85a;"></span>latest node</div>
+      </div>
+      <div class="footer-note">
+        Nodes are decode steps arranged in 3D. Edges are the strongest retained attention links to earlier generated steps.
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="title">Generated Text</div>
+      <div class="text-box" id="generatedText">Waiting for output...</div>
+      <div class="block">
+        <div class="title">Context</div>
+        <div class="text-box" id="contextText">No context attached.</div>
+      </div>
+      <div class="block">
+        <div class="title">Step Timeline</div>
+        <div class="event-feed" id="eventFeed"></div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const graphElement = document.getElementById("graph");
+    const graphState = {
+      nodes: [],
+      links: [],
+      nodeMap: new Map(),
+      linkMap: new Map(),
+    };
+    const nodeBaseColor = "#6fb7ff";
+    const latestNodeColor = "#ffc85a";
+    let graphDirty = false;
+
+    const graph = ForceGraph3D()(graphElement)
+      .backgroundColor("#060e1a")
+      .showNavInfo(false)
+      .nodeId("id")
+      .nodeColor((n) => n.color || nodeBaseColor)
+      .nodeVal((n) => n.val || 18)
+      .nodeOpacity(0.92)
+      .nodeLabel((n) => `Step ${n.step}`)
+      .linkSource("source")
+      .linkTarget("target")
+      .linkColor(() => "#ff6040")
+      .linkWidth(2.5)
+      .linkOpacity(0.9)
+      .linkDirectionalParticles(2)
+      .linkDirectionalParticleWidth(3)
+      .linkDirectionalParticleSpeed(0.006)
+      .linkDirectionalParticleColor(() => "#ffc85a")
+      .warmupTicks(60)
+      .cooldownTicks(0)
+      .cooldownTime(100);
+
+    graph.d3Force("charge").strength(-2);
+    graph.d3Force("center", null);
+
+    graph.cameraPosition({ x: 0, y: 180, z: 280 });
+    graph.controls().autoRotate = true;
+    graph.controls().autoRotateSpeed = 0.3;
+    graph.controls().enableDamping = true;
+    graph.controls().dampingFactor = 0.1;
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.6);
+    const pointLight = new THREE.PointLight(0x6fb7ff, 2.0, 1600);
+    pointLight.position.set(0, 200, 300);
+    graph.scene().add(ambientLight);
+    graph.scene().add(pointLight);
+
+    let lastSeq = 0;
+    let latestNodeId = null;
+    let completedSamples = 0;
+    let totalSamples = 0;
+    const eventFeed = document.getElementById("eventFeed");
+    const startButton = document.getElementById("startButton");
+    const skipButton = document.getElementById("skipButton");
+    const stopButton = document.getElementById("stopButton");
+    const backToLiveButton = document.getElementById("backToLiveButton");
+    const startCustomButton = document.getElementById("startCustomButton");
+    const customPromptInput = document.getElementById("customPromptInput");
+    const customContextInput = document.getElementById("customContextInput");
+    const customGoldInput = document.getElementById("customGoldInput");
+    const historyList = document.getElementById("historyList");
+    let viewMode = "live";
+    let selectedHistorySampleId = null;
+    let latestLiveSampleSnapshot = null;
+    let latestHistorySamples = [];
+
+    function setStatus(text, tone = "info") {
+      const pill = document.getElementById("statusPill");
+      pill.textContent = text;
+      const colors = {
+        info: ["rgba(111, 183, 255, 0.12)", "#6fb7ff"],
+        success: ["rgba(85, 211, 154, 0.12)", "#55d39a"],
+        warn: ["rgba(255, 200, 90, 0.12)", "#ffc85a"],
+        danger: ["rgba(255, 125, 125, 0.12)", "#ff7d7d"],
+      };
+      const [bg, fg] = colors[tone] || colors.info;
+      pill.style.background = bg;
+      pill.style.color = fg;
+    }
+
+    function clearGraph() {
+      graphState.nodeMap.clear();
+      graphState.linkMap.clear();
+      graphState.nodes = [];
+      graphState.links = [];
+      latestNodeId = null;
+      graph.graphData({ nodes: [], links: [] });
+    }
+
+    function resetFeed() {
+      eventFeed.innerHTML = "";
+    }
+
+    function pushEvent(text) {
+      const row = document.createElement("div");
+      row.className = "event-row";
+      row.textContent = text;
+      eventFeed.prepend(row);
+      while (eventFeed.children.length > 20) {
+        eventFeed.removeChild(eventFeed.lastChild);
+      }
+    }
+
+    function updateProcess(process = {}) {
+      const running = Boolean(process.running);
+      startButton.disabled = running;
+      startCustomButton.disabled = running;
+      skipButton.disabled = !running;
+      stopButton.disabled = !running;
+      backToLiveButton.disabled = viewMode === "live";
+      document.getElementById("processLine").textContent = running
+        ? `Collector running${process.pid ? ` (pid ${process.pid})` : ""}.`
+        : "Collector is idle.";
+    }
+
+    function updateProgress() {
+      document.getElementById("progressCount").textContent = `${completedSamples} / ${totalSamples}`;
+    }
+
+    function renderHistory(history = []) {
+      latestHistorySamples = history;
+      historyList.innerHTML = "";
+      history.forEach((sample, index) => {
+        const btn = document.createElement("button");
+        btn.className = "history-item";
+        if (selectedHistorySampleId === sample.sample_id) {
+          btn.classList.add("active");
+        }
+        const correctnessText = sample.correctness === undefined ? "-" : sample.correctness;
+        const status = sample.status || "unknown";
+        btn.textContent =
+          `${index + 1}. ${sample.sample_id} | ${status} | correctness ${correctnessText} | nodes ${sample.metrics?.node_count ?? 0}`;
+        btn.addEventListener("click", () => showSampleSnapshot(sample));
+        historyList.appendChild(btn);
+      });
+    }
+
+    function showSampleSnapshot(sample) {
+      viewMode = "history";
+      selectedHistorySampleId = sample.sample_id;
+      clearGraph();
+      (sample.nodes || []).forEach(upsertNode);
+      upsertEdges(sample.edges || []);
+      document.getElementById("sampleId").textContent = sample.sample_id || "-";
+      document.getElementById("promptText").textContent = sample.prompt || "No prompt.";
+      document.getElementById("contextText").textContent = sample.context || "No context attached.";
+      document.getElementById("generatedText").textContent = sample.generated_text || "";
+      const status = sample.status || "unknown";
+      const correctnessText = sample.correctness === undefined ? "-" : sample.correctness;
+      document.getElementById("sampleStatusText").textContent =
+        `History view | ${status} | Correctness ${correctnessText}`;
+      updateMetrics(sample.metrics || {});
+      backToLiveButton.disabled = false;
+      renderHistory(latestHistorySamples);
+    }
+
+    function showLiveSnapshot() {
+      viewMode = "live";
+      selectedHistorySampleId = null;
+      backToLiveButton.disabled = true;
+      if (!latestLiveSampleSnapshot) {
+        clearGraph();
+        return;
+      }
+      clearGraph();
+      (latestLiveSampleSnapshot.nodes || []).forEach(upsertNode);
+      upsertEdges(latestLiveSampleSnapshot.edges || []);
+      document.getElementById("sampleId").textContent = latestLiveSampleSnapshot.sample_id || "-";
+      document.getElementById("promptText").textContent = latestLiveSampleSnapshot.prompt || "No prompt.";
+      document.getElementById("contextText").textContent = latestLiveSampleSnapshot.context || "No context attached.";
+      document.getElementById("generatedText").textContent = latestLiveSampleSnapshot.generated_text || "Waiting for output...";
+      const status = latestLiveSampleSnapshot.status || "running";
+      const correctnessText = latestLiveSampleSnapshot.correctness === undefined ? "-" : latestLiveSampleSnapshot.correctness;
+      document.getElementById("sampleStatusText").textContent = `Live view | ${status} | Correctness ${correctnessText}`;
+      updateMetrics(latestLiveSampleSnapshot.metrics || {});
+    }
+
+    function upsertNode(node) {
+      if (latestNodeId && graphState.nodeMap.has(latestNodeId)) {
+        const prev = graphState.nodeMap.get(latestNodeId);
+        prev.color = nodeBaseColor;
+        prev.val = 18;
+      }
+      latestNodeId = node.id;
+      const step = Number(node.step || 0);
+      const pos = computeNodePosition(step);
+      const entry = {
+        id: node.id,
+        label: node.label,
+        step,
+        color: latestNodeColor,
+        val: 26,
+        fx: pos.x,
+        fy: pos.y,
+        fz: pos.z,
+      };
+      graphState.nodeMap.set(node.id, entry);
+      graphDirty = true;
+    }
+
+    function upsertEdges(newEdges) {
+      if (!newEdges || newEdges.length === 0) return;
+      graphState.linkMap.forEach((l) => { l.isLatest = false; });
+      newEdges.forEach((edge) => {
+        graphState.linkMap.set(edge.id, {
+          id: edge.id,
+          sourceId: edge.from,
+          targetId: edge.to,
+          weight: edge.weight,
+          isLatest: true,
+        });
+      });
+      graphDirty = true;
+    }
+
+    function computeNodePosition(step) {
+      const radius = 40 + step * 1.4;
+      const angle = step * 0.55;
+      return {
+        x: Math.cos(angle) * radius,
+        y: step * 3,
+        z: Math.sin(angle) * radius,
+      };
+    }
+
+    function flushGraph() {
+      if (!graphDirty) return;
+      graphDirty = false;
+
+      const nodeArr = Array.from(graphState.nodeMap.values()).map((n) => ({
+        id: n.id,
+        label: n.label,
+        step: n.step,
+        color: n.color,
+        val: n.val,
+        fx: n.fx,
+        fy: n.fy,
+        fz: n.fz,
+      }));
+
+      const existingIds = new Set(nodeArr.map((n) => n.id));
+      const linkArr = [];
+      graphState.linkMap.forEach((l) => {
+        if (existingIds.has(l.sourceId) && existingIds.has(l.targetId)) {
+          linkArr.push({
+            source: l.sourceId,
+            target: l.targetId,
+          });
+        }
+      });
+
+      graph.graphData({ nodes: nodeArr, links: linkArr });
+    }
+
+    setInterval(flushGraph, 400);
+
+    function updateMetrics(metrics = {}) {
+      document.getElementById("nodeCount").textContent = metrics.node_count ?? 0;
+      document.getElementById("edgeCount").textContent = metrics.edge_count ?? 0;
+      const ratio = metrics.latest_lookback_ratio;
+      if (ratio === null || ratio === undefined) {
+        document.getElementById("lookbackLabel").textContent = "No decode steps yet";
+        document.getElementById("lookbackFill").style.width = "0%";
+        return;
+      }
+      document.getElementById("lookbackLabel").textContent = `${(ratio * 100).toFixed(1)}% attention on prompt context`;
+      document.getElementById("lookbackFill").style.width = `${Math.max(0, Math.min(100, ratio * 100))}%`;
+    }
+
+    function applyState(state) {
+      updateProcess(state.process || {});
+      renderHistory(state.history || []);
+      if (state.run) {
+        document.getElementById("runTitle").textContent = `${state.run.dataset_name} | ${state.run.model_name}`;
+        setStatus(state.run.status || "running", state.run.status === "finished" ? "success" : "info");
+        totalSamples = state.run.total_samples || 0;
+        completedSamples = state.run.status === "finished" ? totalSamples : completedSamples;
+        updateProgress();
+      }
+
+      if (!state.current_sample) {
+        return;
+      }
+
+      latestLiveSampleSnapshot = JSON.parse(JSON.stringify(state.current_sample));
+      latestLiveSampleSnapshot._history = state.history || [];
+
+      if (viewMode === "history") {
+        return;
+      }
+
+      document.getElementById("sampleId").textContent = state.current_sample.sample_id || "-";
+      document.getElementById("promptText").textContent = state.current_sample.prompt || "No prompt.";
+      document.getElementById("contextText").textContent = state.current_sample.context || "No context attached.";
+      document.getElementById("generatedText").textContent = state.current_sample.generated_text || "Waiting for output...";
+      document.getElementById("sampleStatusText").textContent =
+        state.current_sample.correctness === undefined
+          ? `Status: ${state.current_sample.status || "running"}`
+          : `Status: ${state.current_sample.status || "saved"} | Correctness: ${state.current_sample.correctness}`;
+
+      updateMetrics(state.current_sample.metrics);
+      if (lastSeq === 0) {
+        clearGraph();
+        (state.current_sample.nodes || []).forEach(upsertNode);
+        upsertEdges(state.current_sample.edges || []);
+      }
+    }
+
+    function applyEvent(event) {
+      lastSeq = Math.max(lastSeq, event.seq);
+      const payload = event.payload || {};
+
+      if (event.type === "sample_started") {
+        latestLiveSampleSnapshot = {
+          sample_id: payload.sample_id || "-",
+          prompt: payload.prompt || "",
+          context: payload.context || "",
+          generated_text: "",
+          status: "running",
+          nodes: [],
+          edges: [],
+          metrics: { node_count: 0, edge_count: 0, latest_lookback_ratio: null },
+        };
+        if (viewMode === "history") {
+          pushEvent(`Started ${payload.sample_id}`);
+          return;
+        }
+        clearGraph();
+        document.getElementById("sampleId").textContent = payload.sample_id || "-";
+        document.getElementById("promptText").textContent = payload.prompt || "";
+        document.getElementById("contextText").textContent = payload.context || "No context attached.";
+        document.getElementById("generatedText").textContent = "Generating...";
+        document.getElementById("sampleStatusText").textContent = `Running example ${payload.sample_id}`;
+        updateMetrics({ node_count: 0, edge_count: 0, latest_lookback_ratio: null });
+        setStatus(`running ${payload.sample_id}`, "info");
+        pushEvent(`Started ${payload.sample_id}`);
+        return;
+      }
+
+      if (event.type === "text_updated") {
+        if (latestLiveSampleSnapshot) {
+          latestLiveSampleSnapshot.generated_text = payload.generated_text || "";
+        }
+        if (viewMode === "history") return;
+        document.getElementById("generatedText").textContent = payload.generated_text || "";
+        return;
+      }
+
+      if (event.type === "graph_step") {
+        if (latestLiveSampleSnapshot) {
+          if (payload.node) {
+            latestLiveSampleSnapshot.nodes = latestLiveSampleSnapshot.nodes || [];
+            latestLiveSampleSnapshot.nodes.push(payload.node);
+          }
+          if (payload.edges) {
+            latestLiveSampleSnapshot.edges = latestLiveSampleSnapshot.edges || [];
+            latestLiveSampleSnapshot.edges.push(...payload.edges);
+          }
+          latestLiveSampleSnapshot.metrics = payload.metrics || latestLiveSampleSnapshot.metrics;
+        }
+        if (viewMode === "history") {
+          pushEvent(
+            `Step ${payload.node?.step ?? "-"} added ${payload.edges?.length ?? 0} edges` +
+            (payload.lookback_ratio !== null && payload.lookback_ratio !== undefined
+              ? ` | Lookback ${(payload.lookback_ratio * 100).toFixed(1)}%`
+              : "")
+          );
+          return;
+        }
+        if (payload.node) {
+          upsertNode(payload.node);
+        }
+        upsertEdges(payload.edges || []);
+        updateMetrics(payload.metrics || {});
+        document.getElementById("sampleStatusText").textContent =
+          `Step ${payload.node?.step ?? "-"} | Nodes ${payload.metrics?.node_count ?? 0} | Edges ${payload.metrics?.edge_count ?? 0}`;
+        pushEvent(
+          `Step ${payload.node?.step ?? "-"} added ${payload.edges?.length ?? 0} edges` +
+          (payload.lookback_ratio !== null && payload.lookback_ratio !== undefined
+            ? ` | Lookback ${(payload.lookback_ratio * 100).toFixed(1)}%`
+            : "")
+        );
+        return;
+      }
+
+      if (event.type === "sample_saved") {
+        if (latestLiveSampleSnapshot) {
+          latestLiveSampleSnapshot.status = "saved";
+          latestLiveSampleSnapshot.correctness = payload.correctness;
+          latestLiveSampleSnapshot.metrics = payload.metrics || latestLiveSampleSnapshot.metrics;
+        }
+        completedSamples += 1;
+        updateProgress();
+        if (viewMode === "history") {
+          pushEvent(`Saved ${payload.sample_id} with correctness ${payload.correctness}`);
+          return;
+        }
+        updateMetrics(payload.metrics || {});
+        document.getElementById("sampleStatusText").textContent =
+          `Saved ${payload.sample_id} | Correctness ${payload.correctness}`;
+        setStatus(`saved ${payload.sample_id}`, "success");
+        pushEvent(`Saved ${payload.sample_id} with correctness ${payload.correctness}`);
+        return;
+      }
+
+      if (event.type === "sample_failed") {
+        if (latestLiveSampleSnapshot) {
+          latestLiveSampleSnapshot.status = "failed";
+          latestLiveSampleSnapshot.failure_reason = payload.reason;
+        }
+        completedSamples += 1;
+        updateProgress();
+        if (viewMode === "history") {
+          pushEvent(`Skipped ${payload.sample_id}: ${payload.reason}`);
+          return;
+        }
+        document.getElementById("sampleStatusText").textContent =
+          `Skipped ${payload.sample_id} | ${payload.reason}`;
+        setStatus(`skipped ${payload.sample_id}`, "warn");
+        pushEvent(`Skipped ${payload.sample_id}: ${payload.reason}`);
+        return;
+      }
+
+      if (event.type === "run_started") {
+        totalSamples = payload.total_samples || 0;
+        completedSamples = 0;
+        updateProgress();
+        resetFeed();
+        pushEvent(`Run started on ${payload.dataset_name}`);
+        return;
+      }
+
+      if (event.type === "run_finished") {
+        setStatus("run finished", "success");
+        updateProcess({ running: false });
+        pushEvent("Run finished");
+      }
+    }
+
+    async function loadState() {
+      const response = await fetch("/api/state", { cache: "no-store" });
+      const state = await response.json();
+      applyState(state);
+    }
+
+    async function pollEvents() {
+      try {
+        const response = await fetch(`/api/events?after=${lastSeq}`, { cache: "no-store" });
+        const data = await response.json();
+        (data.events || []).forEach(applyEvent);
+      } catch (error) {
+        setStatus("viewer disconnected", "danger");
+      }
+    }
+
+    async function startRun() {
+      startButton.disabled = true;
+      try {
+        const response = await fetch("/api/start", { method: "POST" });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.message || "Unable to start collector.");
+        }
+        clearGraph();
+        resetFeed();
+        lastSeq = 0;
+        viewMode = "live";
+        selectedHistorySampleId = null;
+        completedSamples = 0;
+        totalSamples = 0;
+        updateProgress();
+        backToLiveButton.disabled = true;
+        document.getElementById("runTitle").textContent = "Starting collector...";
+        document.getElementById("sampleId").textContent = "-";
+        document.getElementById("promptText").textContent = "Waiting for first sample.";
+        document.getElementById("generatedText").textContent = "Waiting for output...";
+        document.getElementById("contextText").textContent = "No context attached.";
+        document.getElementById("sampleStatusText").textContent = "Collector launched from UI.";
+        setStatus("starting", "info");
+        updateProcess(data.process || {});
+      } catch (error) {
+        setStatus("failed to start", "danger");
+        document.getElementById("sampleStatusText").textContent = error.message;
+        startButton.disabled = false;
+      }
+    }
+
+    async function startCustomRun() {
+      const prompt = (customPromptInput.value || "").trim();
+      if (!prompt) {
+        setStatus("custom prompt required", "warn");
+        document.getElementById("sampleStatusText").textContent = "Enter a custom prompt first.";
+        return;
+      }
+
+      startCustomButton.disabled = true;
+      try {
+        const payload = {
+          prompt,
+          context: (customContextInput.value || "").trim(),
+          gold_answer: (customGoldInput.value || "").trim(),
+          sample_id: `custom_${Date.now()}`,
+          dataset_name: "CustomUserPrompt",
+        };
+        const response = await fetch("/api/start-custom", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.message || "Unable to start custom run.");
+        }
+
+        clearGraph();
+        resetFeed();
+        lastSeq = 0;
+        viewMode = "live";
+        selectedHistorySampleId = null;
+        completedSamples = 0;
+        totalSamples = 0;
+        updateProgress();
+        backToLiveButton.disabled = true;
+        document.getElementById("runTitle").textContent = "Starting custom collector...";
+        document.getElementById("sampleId").textContent = "-";
+        document.getElementById("promptText").textContent = prompt;
+        document.getElementById("generatedText").textContent = "Waiting for output...";
+        document.getElementById("contextText").textContent = payload.context || "No context attached.";
+        document.getElementById("sampleStatusText").textContent = "Custom collector launched from UI.";
+        setStatus("starting custom run", "info");
+        updateProcess(data.process || {});
+      } catch (error) {
+        setStatus("failed to start custom", "danger");
+        document.getElementById("sampleStatusText").textContent = error.message;
+        startCustomButton.disabled = false;
+      }
+    }
+
+    async function skipCurrentSample() {
+      try {
+        const response = await fetch("/api/skip", { method: "POST" });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.message || "Unable to skip current sample.");
+        }
+        setStatus("skip requested", "warn");
+        document.getElementById("sampleStatusText").textContent = "Skip signal sent. Waiting for next sample.";
+      } catch (error) {
+        setStatus("skip failed", "danger");
+        document.getElementById("sampleStatusText").textContent = error.message;
+      }
+    }
+
+    async function stopRun() {
+      try {
+        const response = await fetch("/api/stop", { method: "POST" });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.message || "Unable to stop collector.");
+        }
+        setStatus("stop requested", "warn");
+        document.getElementById("sampleStatusText").textContent = "Stop signal sent to collector.";
+        updateProcess(data.process || {});
+      } catch (error) {
+        setStatus("stop failed", "danger");
+        document.getElementById("sampleStatusText").textContent = error.message;
+      }
+    }
+
+    async function boot() {
+      await loadState();
+      setInterval(pollEvents, 250);
+      setInterval(loadState, 1500);
+      startButton.addEventListener("click", startRun);
+      startCustomButton.addEventListener("click", startCustomRun);
+      skipButton.addEventListener("click", skipCurrentSample);
+      stopButton.addEventListener("click", stopRun);
+      backToLiveButton.addEventListener("click", showLiveSnapshot);
+    }
+
+    boot();
+  </script>
+</body>
+</html>
