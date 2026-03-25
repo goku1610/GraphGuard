@@ -47,6 +47,48 @@ class BenchmarkLoader:
             examples.append(ex)
         return examples
 
+    def load_movie_qa(self, split="test") -> List[BenchmarkExample]:
+        filename = "movie_qa_test.csv" if split == "test" else "movie_qa_train.csv"
+        filepath = os.path.join(self.data_dir, filename)
+        if not os.path.exists(filepath):
+            print(f"⚠️ Warning: Dataset not found at {filepath}")
+            return []
+
+        df = pd.read_csv(filepath)
+        examples = []
+        for idx, row in df.iterrows():
+            examples.append(
+                BenchmarkExample(
+                    sample_id=f"movieqa_{split}_{idx}",
+                    dataset_name="MovieQA",
+                    split=split,
+                    prompt=str(row["Question"]),
+                    gold_answer=str(row["Answer"]),
+                )
+            )
+        return examples
+
+    def load_mnli(self, split="train") -> List[BenchmarkExample]:
+        filename = "mnli_validation.csv" if split == "validation" else "mnli_train.csv"
+        filepath = os.path.join(self.data_dir, filename)
+        if not os.path.exists(filepath):
+            print(f"⚠️ Warning: Dataset not found at {filepath}")
+            return []
+
+        df = pd.read_csv(filepath)
+        examples = []
+        for idx, row in df.iterrows():
+            examples.append(
+                BenchmarkExample(
+                    sample_id=f"mnli_{split}_{idx}",
+                    dataset_name="MNLI",
+                    split=split,
+                    prompt=str(row["Question"]),
+                    gold_answer=str(row["Answer"]),
+                )
+            )
+        return examples
+
     def load_nq(self, split="test") -> List[BenchmarkExample]:
         """Loads Natural Questions dataset."""
         candidate_filenames = [f"nq_wc_dataset_{split}.csv", "nq_wc_dataset.csv"]
@@ -74,3 +116,66 @@ class BenchmarkLoader:
             )
             examples.append(ex)
         return examples
+
+    def load_winogrande(self, split="test") -> List[BenchmarkExample]:
+        filename = "winogrande_test.csv" if split == "test" else "winogrande_train.csv"
+        filepath = os.path.join(self.data_dir, filename)
+        if not os.path.exists(filepath):
+            print(f"⚠️ Warning: Dataset not found at {filepath}")
+            return []
+
+        df = pd.read_csv(filepath)
+        examples = []
+        for idx, row in df.iterrows():
+            examples.append(
+                BenchmarkExample(
+                    sample_id=f"winogrande_{split}_{idx}",
+                    dataset_name="WinoGrande",
+                    split=split,
+                    prompt=str(row["Question"]),
+                    gold_answer=str(row["Answer"]),
+                )
+            )
+        return examples
+
+    def load_winobias(self, split="test") -> List[BenchmarkExample]:
+        filename = "winobias_test.csv" if split == "test" else "winobias_dev.csv"
+        filepath = os.path.join(self.data_dir, filename)
+        if not os.path.exists(filepath):
+            print(f"⚠️ Warning: Dataset not found at {filepath}")
+            return []
+
+        df = pd.read_csv(filepath)
+        examples = []
+        for idx, row in df.iterrows():
+            prompt = row.get("q_instruct", row.get("q", ""))
+            context = row.get("sentence", None)
+            examples.append(
+                BenchmarkExample(
+                    sample_id=f"winobias_{split}_{idx}",
+                    dataset_name="WinoBias",
+                    split=split,
+                    prompt=str(prompt),
+                    gold_answer=str(row["answer"]),
+                    context=str(context) if context is not None else None,
+                )
+            )
+        return examples
+
+    def load_dataset(self, dataset: str, split: str = "test") -> List[BenchmarkExample]:
+        key = dataset.lower()
+        if key == "math":
+            return self.load_math(split=split)
+        if key == "nq":
+            return self.load_nq(split=split)
+        if key == "movie_qa":
+            return self.load_movie_qa(split=split)
+        if key == "mnli":
+            normalized_split = "validation" if split in {"val", "valid", "validation", "test"} else "train"
+            return self.load_mnli(split=normalized_split)
+        if key == "winogrande":
+            return self.load_winogrande(split=split)
+        if key == "winobias":
+            return self.load_winobias(split=split)
+        print(f"⚠️ Warning: Unsupported dataset key '{dataset}'.")
+        return []

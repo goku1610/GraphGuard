@@ -86,7 +86,11 @@ def validate_output(text, extractor):
 
 def build_cli_args():
     parser = argparse.ArgumentParser(description="Collect benchmark or custom traces.")
-    parser.add_argument("--dataset", choices=["math", "nq"], default="math")
+    parser.add_argument(
+        "--dataset",
+        choices=["math", "nq", "movie_qa", "mnli", "winogrande", "winobias", "all"],
+        default="math",
+    )
     parser.add_argument("--split", default="test")
     parser.add_argument("--limit", type=int, default=10)
     parser.add_argument("--custom-prompt", default=None)
@@ -132,24 +136,41 @@ def main():
     writer = TraceDatasetManager(save_dir="charm_unified_dataset")
     
     custom_example = maybe_build_custom_example(args)
+    dataset_keys = ["math", "nq", "movie_qa", "mnli", "winogrande", "winobias"]
     if custom_example is not None:
         test_subset = [custom_example]
         active_dataset_name = args.custom_dataset_name
         print("\n📚 Running a single custom prompt sample...")
     else:
-        if args.dataset == "nq":
-            print(f"\n📚 Loading NaturalQuestions ({args.split})...")
-            dataset = loader.load_nq(split=args.split)
-            active_dataset_name = "NaturalQuestions"
+        if args.dataset == "all":
+            print(f"\n📚 Loading all datasets ({args.split}), up to {args.limit} per dataset...")
+            merged = []
+            for key in dataset_keys:
+                part = loader.load_dataset(dataset=key, split=args.split)
+                if not part and key == "mnli":
+                    part = loader.load_dataset(dataset=key, split="train")
+                if not part:
+                    print(f"⚠️ Skipping '{key}' (no rows found for split '{args.split}').")
+                    continue
+                capped = part[: args.limit]
+                print(f"  - {key}: loaded {len(capped)} samples")
+                merged.extend(capped)
+            if not merged:
+                print("❌ No datasets could be loaded. Check files under 'tokenizer/data/llmsknow'.")
+                return
+            test_subset = merged
+            active_dataset_name = "all_datasets"
         else:
-            print(f"\n📚 Loading AnswerableMath ({args.split})...")
-            dataset = loader.load_math(split=args.split)
-            active_dataset_name = "AnswerableMath"
+            print(f"\n📚 Loading dataset '{args.dataset}' ({args.split})...")
+            dataset = loader.load_dataset(dataset=args.dataset, split=args.split)
+            if not dataset and args.dataset == "mnli":
+                dataset = loader.load_dataset(dataset=args.dataset, split="train")
+            active_dataset_name = dataset[0].dataset_name if dataset else args.dataset
 
-        if not dataset:
-            print("❌ Dataset not found. Ensure required files exist under 'tokenizer/data/llmsknow'.")
-            return
-        test_subset = dataset[: args.limit]
+            if not dataset:
+                print("❌ Dataset not found. Ensure required files exist under 'tokenizer/data/llmsknow'.")
+                return
+            test_subset = dataset[: args.limit]
 
     live_reporter.start_run(
         model_name="Qwen/Qwen3.5-0.8B",
