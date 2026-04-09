@@ -6,6 +6,7 @@
   <title>GraphGuard Live Viewer</title>
   <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
   <script src="https://unpkg.com/3d-force-graph@1.76.0/dist/3d-force-graph.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
     :root {
       --bg: #08111f;
@@ -270,6 +271,28 @@
       line-height: 1.5;
     }
 
+    .line-chart-wrap {
+      margin-top: 16px;
+      height: 200px;
+      position: relative;
+      border-radius: 14px;
+      background: rgba(5, 10, 18, 0.76);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 8px 8px 4px;
+    }
+
+    .line-chart-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .line-chart-actions .button {
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+
     @media (max-width: 1200px) {
       .shell {
         grid-template-columns: 1fr;
@@ -354,8 +377,18 @@
         <div><span class="dot" style="background:#6fb7ff;"></span>generated node</div>
         <div><span class="dot" style="background:#ffc85a;"></span>latest node</div>
       </div>
+      <div class="title" style="margin-top: 18px;">Lookback vs decode step</div>
+      <div class="line-chart-wrap">
+        <canvas id="lineChartCanvas" aria-label="Lookback ratio line chart"></canvas>
+      </div>
+      <div class="line-chart-actions">
+        <button type="button" class="button" id="saveChartPng">Save chart (PNG)</button>
+        <button type="button" class="button" id="saveSeriesJson">Save series (JSON)</button>
+        <button type="button" class="button" id="saveCombinedPng">Save graph + chart (PNG)</button>
+      </div>
       <div class="footer-note">
         Nodes are decode steps arranged in 3D. Edges are the strongest retained attention links to earlier generated steps.
+        The line chart tracks attention on prompt context (lookback %) at each decode step.
       </div>
     </section>
 
@@ -385,7 +418,7 @@
     const latestNodeColor = "#ffc85a";
     let graphDirty = false;
 
-    const graph = ForceGraph3D()(graphElement)
+    const graph = ForceGraph3D({ rendererConfig: { preserveDrawingBuffer: true } })(graphElement)
       .backgroundColor("#060e1a")
       .showNavInfo(false)
       .nodeId("id")
@@ -420,6 +453,150 @@
     pointLight.position.set(0, 200, 300);
     graph.scene().add(ambientLight);
     graph.scene().add(pointLight);
+
+    let lookbackSeries = [];
+    const lineChartCtx = document.getElementById("lineChartCanvas").getContext("2d");
+    const lineChart = new Chart(lineChartCtx, {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: "Lookback % on prompt context",
+            data: [],
+            borderColor: "#6fb7ff",
+            backgroundColor: "rgba(111, 183, 255, 0.12)",
+            fill: true,
+            tension: 0.2,
+            pointRadius: 3,
+            pointBackgroundColor: "#ffc85a",
+            borderWidth: 2,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        plugins: {
+          legend: { labels: { color: "#8fa8c7" } },
+          tooltip: {
+            callbacks: {
+              label(ctx) {
+                const v = ctx.parsed.y;
+                return v != null ? `${ctx.dataset.label}: ${v.toFixed(1)}%` : "";
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            ticks: { color: "#8fa8c7", maxRotation: 45 },
+            grid: { color: "rgba(255,255,255,0.06)" },
+            title: { display: true, text: "Decode step", color: "#8fa8c7" },
+          },
+          y: {
+            min: 0,
+            max: 100,
+            title: { display: true, text: "%", color: "#8fa8c7" },
+            ticks: { color: "#8fa8c7" },
+            grid: { color: "rgba(255,255,255,0.06)" },
+          },
+        },
+      },
+    });
+
+    function resetLineChart() {
+      lookbackSeries = [];
+      lineChart.data.labels = [];
+      lineChart.data.datasets[0].data = [];
+      lineChart.update();
+    }
+
+    function pushLookbackPoint(step, ratio) {
+      if (ratio === null || ratio === undefined) return;
+      lookbackSeries.push({ step, ratio });
+      lineChart.data.labels.push(`Step ${step}`);
+      lineChart.data.datasets[0].data.push(ratio * 100);
+      lineChart.update("none");
+    }
+
+    function rebuildLineChartFromSample(sample) {
+      lookbackSeries = [];
+      if (!sample) {
+        resetLineChart();
+        return;
+      }
+      const ratios = sample.lookback_ratios;
+      if (ratios && ratios.length) {
+        const nodes = (sample.nodes || []).slice().sort((a, b) => (a.step || 0) - (b.step || 0));
+        if (nodes.length === ratios.length) {
+          ratios.forEach((r, i) => {
+            lookbackSeries.push({ step: nodes[i].step, ratio: r });
+          });
+          lineChart.data.labels = nodes.map((n) => `Step ${n.step}`);
+          lineChart.data.datasets[0].data = ratios.map((r) => r * 100);
+        } else {
+          ratios.forEach((r, i) => {
+            lookbackSeries.push({ step: i, ratio: r });
+          });
+          lineChart.data.labels = ratios.map((_, i) => `Step ${i}`);
+          lineChart.data.datasets[0].data = ratios.map((r) => r * 100);
+        }
+        lineChart.update();
+        return;
+      }
+      resetLineChart();
+    }
+
+    function triggerDownload(href, filename) {
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = filename;
+      a.click();
+    }
+
+    function saveChartPng() {
+      const url = lineChart.canvas.toDataURL("image/png");
+      triggerDownload(url, `graphguard-lookback-chart-${Date.now()}.png`);
+    }
+
+    function saveSeriesJson() {
+      const payload = {
+        exported_at: new Date().toISOString(),
+        sample_id: latestLiveSampleSnapshot?.sample_id ?? "-",
+        lookback_series: lookbackSeries,
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      triggerDownload(url, `graphguard-lookback-${Date.now()}.json`);
+      URL.revokeObjectURL(url);
+    }
+
+    function saveCombinedPng() {
+      const graphCanvas = graph.renderer().domElement;
+      const chartCanvas = lineChart.canvas;
+      const pad = 16;
+      const titleGap = 22;
+      const w = Math.max(graphCanvas.width, chartCanvas.width);
+      const h = titleGap + graphCanvas.height + pad + titleGap + chartCanvas.height + pad;
+      const merged = document.createElement("canvas");
+      merged.width = w;
+      merged.height = h;
+      const ctx = merged.getContext("2d");
+      ctx.fillStyle = "#060e1a";
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = "#8fa8c7";
+      ctx.font = "13px Segoe UI, system-ui, sans-serif";
+      ctx.fillText("3D reasoning graph", pad, 16);
+      const gx = Math.max(0, (w - graphCanvas.width) / 2);
+      ctx.drawImage(graphCanvas, gx, titleGap);
+      const yChart = titleGap + graphCanvas.height + pad;
+      ctx.fillText("Lookback vs decode step", pad, yChart - 6);
+      const cx = Math.max(0, (w - chartCanvas.width) / 2);
+      ctx.drawImage(chartCanvas, cx, yChart);
+      triggerDownload(merged.toDataURL("image/png"), `graphguard-live-combined-${Date.now()}.png`);
+    }
 
     let lastSeq = 0;
     let latestNodeId = null;
@@ -526,6 +703,7 @@
       document.getElementById("sampleStatusText").textContent =
         `History view | ${status} | Correctness ${correctnessText}`;
       updateMetrics(sample.metrics || {});
+      rebuildLineChartFromSample(sample);
       backToLiveButton.disabled = false;
       renderHistory(latestHistorySamples);
     }
@@ -549,6 +727,7 @@
       const correctnessText = latestLiveSampleSnapshot.correctness === undefined ? "-" : latestLiveSampleSnapshot.correctness;
       document.getElementById("sampleStatusText").textContent = `Live view | ${status} | Correctness ${correctnessText}`;
       updateMetrics(latestLiveSampleSnapshot.metrics || {});
+      rebuildLineChartFromSample(latestLiveSampleSnapshot);
     }
 
     function upsertNode(node) {
@@ -655,6 +834,9 @@
       }
 
       if (!state.current_sample) {
+        if (viewMode === "live") {
+          resetLineChart();
+        }
         return;
       }
 
@@ -680,6 +862,7 @@
         (state.current_sample.nodes || []).forEach(upsertNode);
         upsertEdges(state.current_sample.edges || []);
       }
+      rebuildLineChartFromSample(state.current_sample);
     }
 
     function applyEvent(event) {
@@ -695,8 +878,10 @@
           status: "running",
           nodes: [],
           edges: [],
+          lookback_ratios: [],
           metrics: { node_count: 0, edge_count: 0, latest_lookback_ratio: null },
         };
+        resetLineChart();
         if (viewMode === "history") {
           pushEvent(`Started ${payload.sample_id}`);
           return;
@@ -733,6 +918,10 @@
             latestLiveSampleSnapshot.edges.push(...payload.edges);
           }
           latestLiveSampleSnapshot.metrics = payload.metrics || latestLiveSampleSnapshot.metrics;
+          if (payload.lookback_ratio !== null && payload.lookback_ratio !== undefined) {
+            latestLiveSampleSnapshot.lookback_ratios = latestLiveSampleSnapshot.lookback_ratios || [];
+            latestLiveSampleSnapshot.lookback_ratios.push(payload.lookback_ratio);
+          }
         }
         if (viewMode === "history") {
           pushEvent(
@@ -745,6 +934,7 @@
         }
         if (payload.node) {
           upsertNode(payload.node);
+          pushLookbackPoint(payload.node?.step, payload.lookback_ratio);
         }
         upsertEdges(payload.edges || []);
         updateMetrics(payload.metrics || {});
@@ -802,6 +992,7 @@
         completedSamples = 0;
         updateProgress();
         resetFeed();
+        resetLineChart();
         pushEvent(`Run started on ${payload.dataset_name}`);
         return;
       }
@@ -839,6 +1030,7 @@
         }
         clearGraph();
         resetFeed();
+        resetLineChart();
         lastSeq = 0;
         viewMode = "live";
         selectedHistorySampleId = null;
@@ -890,6 +1082,7 @@
 
         clearGraph();
         resetFeed();
+        resetLineChart();
         lastSeq = 0;
         viewMode = "live";
         selectedHistorySampleId = null;
@@ -952,6 +1145,9 @@
       skipButton.addEventListener("click", skipCurrentSample);
       stopButton.addEventListener("click", stopRun);
       backToLiveButton.addEventListener("click", showLiveSnapshot);
+      document.getElementById("saveChartPng").addEventListener("click", saveChartPng);
+      document.getElementById("saveSeriesJson").addEventListener("click", saveSeriesJson);
+      document.getElementById("saveCombinedPng").addEventListener("click", saveCombinedPng);
     }
 
     boot();

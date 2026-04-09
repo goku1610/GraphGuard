@@ -13,8 +13,10 @@ sys.path.append(PARENT_DIR)
 
 from grammar import build_generator
 from extractors.trace_extractor import TraceExtractor
-from trainers.gnn_trainer import CHARMCritic
+from trainers.gnn_trainer import CHARMCritic, NODE_DIM
 from transformers import StoppingCriteria, StoppingCriteriaList
+
+CHARM_MODE = os.environ.get("CHARM_MODE", "att+act")
 
 app = FastAPI(title="CHARM Standalone UI Engine")
 
@@ -56,9 +58,10 @@ def load_models():
     extractor = TraceExtractor(threshold=0.05)
     extractor.attach_hooks(llm_model)
     
-    # Load your freshly trained GNN Brain
-    gnn_model = CHARMCritic(node_dim=1024, hidden_dim=256).to(device)
-    weights_path = os.path.join(PARENT_DIR, "trainers", "weights", "charm_critic_v1.pth")
+    node_dim = NODE_DIM[CHARM_MODE]
+    gnn_model = CHARMCritic(node_dim=node_dim, hidden_dim=256, edge_dim=1).to(device)
+    weight_name = f"charm_critic_{CHARM_MODE.replace('+', '_')}_v1.pth"
+    weights_path = os.path.join(PARENT_DIR, "trainers", "weights", weight_name)
     
     if os.path.exists(weights_path):
         gnn_model.load_state_dict(torch.load(weights_path, map_location=device, weights_only=True))
@@ -99,8 +102,18 @@ def analyze(req: GenerateRequest):
     real_tokens = [llm_tokenizer.decode([tid]) for tid in new_tokens_ids]
 
     # 3. Graph Assembly (Using the Activation Count as the Source of Truth)
-    x = torch.stack(extractor.activations).to(torch.float32)
-    num_nodes = x.size(0)
+    activations = torch.stack(extractor.activations).to(torch.float32)
+    num_nodes = activations.size(0)
+
+    if extractor.lookback_ratios and len(extractor.lookback_ratios) == num_nodes:
+        lb = torch.tensor(extractor.lookback_ratios, dtype=torch.float32).unsqueeze(1)
+    else:
+        lb = torch.zeros(num_nodes, 1, dtype=torch.float32)
+
+    if CHARM_MODE == "att":
+        x = lb
+    else:
+        x = torch.cat([activations, lb], dim=-1)
     
     ui_edges, source_nodes, target_nodes, edge_weights = [], [], [], []
     for step_edges in extractor.sparse_edges:

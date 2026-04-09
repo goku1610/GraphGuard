@@ -12,14 +12,10 @@ warnings.filterwarnings("ignore")
 # 1. The Neural Network Architecture
 # ==========================================
 class CHARMCritic(torch.nn.Module):
-    def __init__(self, node_dim=1024, hidden_dim=256):
+    def __init__(self, node_dim=1025, hidden_dim=256, edge_dim=1):
         super(CHARMCritic, self).__init__()
-        # Graph Attention Layers (Message Passing)
-        # We use 4 attention heads to capture multiple types of logical flow
-        self.conv1 = GATConv(node_dim, hidden_dim, heads=4, concat=False)
-        self.conv2 = GATConv(hidden_dim, hidden_dim, heads=4, concat=False)
-        
-        # Linear Classification Head
+        self.conv1 = GATConv(node_dim, hidden_dim, heads=4, concat=False, edge_dim=edge_dim)
+        self.conv2 = GATConv(hidden_dim, hidden_dim, heads=4, concat=False, edge_dim=edge_dim)
         self.lin1 = torch.nn.Linear(hidden_dim, 64)
         self.lin2 = torch.nn.Linear(64, 1)
 
@@ -42,8 +38,8 @@ class CHARMCritic(torch.nn.Module):
 # ==========================================
 # 2. Data Loading & Schema Handling
 # ==========================================
-def load_graph_dataset(dataset_dir):
-    print(f"Loading PyG graphs from: {dataset_dir}")
+def load_graph_dataset(dataset_dir, mode="att+act"):
+    print(f"Loading PyG graphs from: {dataset_dir}  [mode={mode}]")
     dataset = []
 
     valid_files = [f for f in os.listdir(dataset_dir) if f.endswith(".pt")]
@@ -51,10 +47,20 @@ def load_graph_dataset(dataset_dir):
     for filename in valid_files:
         filepath = os.path.join(dataset_dir, filename)
         try:
-            # Load graph and cast BFloat16 to standard Float32 for training
             data = torch.load(filepath, weights_only=False)
             data.x = data.x.to(torch.float32)
             data.edge_attr = data.edge_attr.to(torch.float32)
+
+            lookback = getattr(data, 'lookback_ratio', None)
+            if lookback is not None and lookback.shape[0] == data.x.shape[0]:
+                lb = lookback.to(torch.float32)
+            else:
+                lb = torch.zeros(data.x.shape[0], 1, dtype=torch.float32)
+
+            if mode == "att":
+                data.x = lb
+            else:
+                data.x = torch.cat([data.x, lb], dim=-1)
             
             # --- THE FIX: Prune Ghost Edges ---
             # 1. Explicitly define the number of nodes
@@ -93,31 +99,29 @@ def load_graph_dataset(dataset_dir):
 # ==========================================
 # 3. The Training Engine
 # ==========================================
-def train_gnn():
-    # Setup Device
+NODE_DIM = {"att": 1, "att+act": 1025}
+
+def train_gnn(mode="att+act"):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"🚀 Training CHARM GNN on device: {device}")
+    print(f"Training CHARM GNN  [mode={mode}, device={device}]")
     
-    # Load Data
     dataset_dir = os.path.join(os.path.dirname(__file__), "..", "charm_unified_dataset")
-    dataset = load_graph_dataset(dataset_dir)
+    dataset = load_graph_dataset(dataset_dir, mode=mode)
     
     if len(dataset) < 10:
         print("Not enough data to train. Please generate more samples.")
         return
 
-    # Train/Test Split (80% Train, 20% Test)
     train_size = int(0.8 * len(dataset))
     test_size = len(dataset) - train_size
     train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
     
-    # Create DataLoaders
     train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=4, shuffle=False)
 
-    # Initialize Model, Loss, and Optimizer
-    model = CHARMCritic(node_dim=1024, hidden_dim=256).to(device)
-    criterion = torch.nn.BCELoss() # Binary Cross Entropy for 0/1 Classification
+    node_dim = NODE_DIM[mode]
+    model = CHARMCritic(node_dim=node_dim, hidden_dim=256, edge_dim=1).to(device)
+    criterion = torch.nn.BCELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
 
     epochs = 20
@@ -167,14 +171,18 @@ def train_gnn():
         
         print(f"Epoch {epoch+1:02d}/{epochs} | Loss: {avg_loss:.4f} | Train Acc: {train_acc:.1f}% | Test Acc: {test_acc:.1f}%")
 
-    # Save the trained weights
     os.makedirs(os.path.join(os.path.dirname(__file__), "weights"), exist_ok=True)
-    save_path = os.path.join(os.path.dirname(__file__), "weights", "charm_critic_v1.pth")
+    weight_name = f"charm_critic_{mode.replace('+', '_')}_v1.pth"
+    save_path = os.path.join(os.path.dirname(__file__), "weights", weight_name)
     torch.save(model.state_dict(), save_path)
     
     print("="*50)
-    print(f"✅ GNN Training Complete! Weights saved to:\n{save_path}")
-    print("==================================================")
+    print(f"GNN Training Complete! Weights saved to:\n{save_path}")
+    print("="*50)
 
 if __name__ == "__main__":
-    train_gnn()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mode", choices=["att", "att+act"], default="att+act")
+    args = parser.parse_args()
+    train_gnn(mode=args.mode)
