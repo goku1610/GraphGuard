@@ -1,0 +1,12 @@
+=== GraphGuard collect_benchmark (gpu-long) ===
+Job ID: 4092
+Host: csis.cn1
+Start: Fri Apr 10 14:58:02 IST 2026
+CUDA_VISIBLE_DEVICES=1
+Python 3.10.20
+torch 2.5.1+cu121 cuda_available True
+🚀 Initializing CHARM Automated Benchmark Collector...
+
+📚 Loading dataset 'math' (test)...
+🎯 Starting automated collection for 5 samples.
+

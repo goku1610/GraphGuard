@@ -1,0 +1,27 @@
+=== GraphGuard collect_benchmark (gpu-long) ===
+Job ID: 4093
+Host: csis.cn2
+Start: Fri Apr 10 15:03:27 IST 2026
+CUDA_VISIBLE_DEVICES=0
+Python 3.10.20
+torch 2.5.1+cu121 cuda_available True
+🚀 Initializing CHARM Automated Benchmark Collector...
+
+📚 Loading dataset 'math' (test)...
+🎯 Starting automated collection for 5 samples.
+
+
+📦 Packaging Unified Trace [AnswerableMath]...
+💾 Saved charm_unified_dataset/sample_000010.pt | Nodes: 253 | Edges: 421 | Correctness: 0.0
+
+⚠️ Early stop on math_test_1: exceeded generated token limit.
+
+⚠️ Early stop on math_test_2: exceeded generated token limit.
+
+⚠️ Early stop on math_test_3: exceeded generated token limit.
+
+📦 Packaging Unified Trace [AnswerableMath]...
+💾 Saved charm_unified_dataset/sample_000011.pt | Nodes: 316 | Edges: 496 | Correctness: 0.0
+
+✅ Benchmark Collection Complete!
+End: Fri Apr 10 15:11:41 IST 2026

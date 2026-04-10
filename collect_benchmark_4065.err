@@ -1,0 +1,86 @@
+The fast path is not available because one of the required library is not installed. Falling back to torch implementation. To install follow https://github.com/fla-org/flash-linear-attention#installation and https://github.com/Dao-AILab/causal-conv1d
+Loading weights:   0%|          | 0/320 [00:00<?, ?it/s]Loading weights:  33%|███▎      | 106/320 [00:00<00:00, 1043.81it/s]Loading weights:  83%|████████▎ | 266/320 [00:00<00:00, 1366.62it/s]Loading weights: 100%|██████████| 320/320 [00:00<00:00, 1370.22it/s]
+Generating Traces:   0%|          | 0/10 [00:00<?, ?it/s]Setting `pad_token_id` to `eos_token_id`:248044 for open-end generation.
+Generating Traces:  10%|█         | 1/10 [00:18<02:42, 18.10s/it]Setting `pad_token_id` to `eos_token_id`:248044 for open-end generation.
+Generating Traces:  20%|██        | 2/10 [01:40<07:26, 55.87s/it]Setting `pad_token_id` to `eos_token_id`:248044 for open-end generation.
+Generating Traces:  30%|███       | 3/10 [03:49<10:26, 89.52s/it]Setting `pad_token_id` to `eos_token_id`:248044 for open-end generation.
+Generating Traces:  40%|████      | 4/10 [06:49<12:29, 124.88s/it]Setting `pad_token_id` to `eos_token_id`:248044 for open-end generation.
+Generating Traces:  50%|█████     | 5/10 [07:56<08:40, 104.03s/it]Setting `pad_token_id` to `eos_token_id`:248044 for open-end generation.
+Generating Traces:  60%|██████    | 6/10 [10:45<08:25, 126.32s/it]Setting `pad_token_id` to `eos_token_id`:248044 for open-end generation.
+Generating Traces:  70%|███████   | 7/10 [15:12<08:36, 172.11s/it]Setting `pad_token_id` to `eos_token_id`:248044 for open-end generation.
+Generating Traces:  80%|████████  | 8/10 [16:42<04:52, 146.12s/it]Setting `pad_token_id` to `eos_token_id`:248044 for open-end generation.
+Generating Traces:  90%|█████████ | 9/10 [18:54<02:21, 141.81s/it]Setting `pad_token_id` to `eos_token_id`:248044 for open-end generation.
+Generating Traces:  90%|█████████ | 9/10 [19:03<02:07, 127.01s/it]
+Traceback (most recent call last):
+  File "/nfs_home/users/vintia/GraphGuard/tokenizer/collectors/collect_benchmark.py", line 207, in main
+    result = generator(prompt, stopping_criteria=halt_state)
+  File "/nfs_home/users/vintia/GraphGuard/tokenizer/grammar.py", line 28, in generator
+    return model(prompt, output_type, max_new_tokens=max_new_tokens, **kwargs)
+  File "/nfs_home/users/vintia/.conda/envs/graphguard/lib/python3.10/site-packages/outlines/models/base.py", line 122, in __call__
+    return Generator(self, output_type, backend)(model_input, **inference_kwargs)
+  File "/nfs_home/users/vintia/.conda/envs/graphguard/lib/python3.10/site-packages/outlines/generator.py", line 297, in __call__
+    return self.model.generate(
+  File "/nfs_home/users/vintia/.conda/envs/graphguard/lib/python3.10/site-packages/outlines/models/transformers.py", line 340, in generate
+    generated_ids = self._generate_output_seq(
+  File "/nfs_home/users/vintia/.conda/envs/graphguard/lib/python3.10/site-packages/outlines/models/transformers.py", line 389, in _generate_output_seq
+    output_ids = self.model.generate(
+  File "/nfs_home/users/vintia/.conda/envs/graphguard/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+  File "/nfs_home/users/vintia/.conda/envs/graphguard/lib/python3.10/site-packages/transformers/generation/utils.py", line 2543, in generate
+    result = decoding_method(
+  File "/nfs_home/users/vintia/.conda/envs/graphguard/lib/python3.10/site-packages/transformers/generation/utils.py", line 2750, in _sample
+    outputs = model_forward(**model_inputs, return_dict=True)
+  File "/nfs_home/users/vintia/.conda/envs/graphguard/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/nfs_home/users/vintia/.conda/envs/graphguard/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/nfs_home/users/vintia/.conda/envs/graphguard/lib/python3.10/site-packages/transformers/utils/generic.py", line 876, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/nfs_home/users/vintia/.conda/envs/graphguard/lib/python3.10/site-packages/transformers/models/qwen3_5/modeling_qwen3_5.py", line 1740, in forward
+    outputs: BaseModelOutputWithPast = self.model(
+  File "/nfs_home/users/vintia/.conda/envs/graphguard/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/nfs_home/users/vintia/.conda/envs/graphguard/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/nfs_home/users/vintia/.conda/envs/graphguard/lib/python3.10/site-packages/transformers/utils/generic.py", line 952, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/nfs_home/users/vintia/.conda/envs/graphguard/lib/python3.10/site-packages/transformers/utils/output_capturing.py", line 248, in wrapper
+    outputs = func(self, *args, **kwargs)
+  File "/nfs_home/users/vintia/.conda/envs/graphguard/lib/python3.10/site-packages/transformers/models/qwen3_5/modeling_qwen3_5.py", line 1275, in forward
+    hidden_states = decoder_layer(
+  File "/nfs_home/users/vintia/.conda/envs/graphguard/lib/python3.10/site-packages/transformers/modeling_layers.py", line 93, in __call__
+    return super().__call__(*args, **kwargs)
+  File "/nfs_home/users/vintia/.conda/envs/graphguard/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/nfs_home/users/vintia/.conda/envs/graphguard/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1844, in _call_impl
+    return inner()
+  File "/nfs_home/users/vintia/.conda/envs/graphguard/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1803, in inner
+    hook_result = hook(self, args, result)
+  File "/nfs_home/users/vintia/GraphGuard/tokenizer/extractors/trace_extractor.py", line 79, in activation_hook
+    self.reporter.add_graph_step(
+  File "/nfs_home/users/vintia/GraphGuard/tokenizer/live_viewer/event_bus.py", line 151, in add_graph_step
+    self._sync_state()
+  File "/nfs_home/users/vintia/GraphGuard/tokenizer/live_viewer/event_bus.py", line 224, in _sync_state
+    self.bus.update_state(self._state)
+  File "/nfs_home/users/vintia/GraphGuard/tokenizer/live_viewer/event_bus.py", line 26, in update_state
+    self._write_json(self.state_path, state)
+  File "/nfs_home/users/vintia/GraphGuard/tokenizer/live_viewer/event_bus.py", line 43, in _write_json
+    os.replace(temp_path, path)
+FileNotFoundError: [Errno 2] No such file or directory: '/nfs_home/users/vintia/GraphGuard/tokenizer/live_viewer/runtime/state.json.tmp' -> '/nfs_home/users/vintia/GraphGuard/tokenizer/live_viewer/runtime/state.json'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/nfs_home/users/vintia/GraphGuard/tokenizer/collectors/collect_benchmark.py", line 262, in <module>
+    main()
+  File "/nfs_home/users/vintia/GraphGuard/tokenizer/collectors/collect_benchmark.py", line 210, in main
+    live_reporter.mark_sample_failed(ex.sample_id, str(e))
+  File "/nfs_home/users/vintia/GraphGuard/tokenizer/live_viewer/event_bus.py", line 174, in mark_sample_failed
+    self._sync_state()
+  File "/nfs_home/users/vintia/GraphGuard/tokenizer/live_viewer/event_bus.py", line 224, in _sync_state
+    self.bus.update_state(self._state)
+  File "/nfs_home/users/vintia/GraphGuard/tokenizer/live_viewer/event_bus.py", line 26, in update_state
+    self._write_json(self.state_path, state)
+  File "/nfs_home/users/vintia/GraphGuard/tokenizer/live_viewer/event_bus.py", line 43, in _write_json
+    os.replace(temp_path, path)
+FileNotFoundError: [Errno 2] No such file or directory: '/nfs_home/users/vintia/GraphGuard/tokenizer/live_viewer/runtime/state.json.tmp' -> '/nfs_home/users/vintia/GraphGuard/tokenizer/live_viewer/runtime/state.json'

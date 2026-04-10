@@ -1,0 +1,40 @@
+=== GraphGuard collect_benchmark (gpu-long) ===
+Job ID: 4065
+Host: csis.cn1
+Start: Thu Apr  9 22:48:58 IST 2026
+CUDA_VISIBLE_DEVICES=0
+Python 3.10.20
+torch 2.5.1+cu121 cuda_available True
+Live viewer pid=1169642, log=live_viewer_4065.log
+Live viewer URL: http://172.24.16.131:8765
+Live viewer API ready at http://127.0.0.1:8765 (node local), public hint: http://172.24.16.131:8765
+🚀 Initializing CHARM Automated Benchmark Collector...
+
+📚 Loading dataset 'math' (test)...
+🎯 Starting automated collection for 10 samples.
+
+
+📦 Packaging Unified Trace [AnswerableMath]...
+💾 Saved charm_unified_dataset/sample_000004.pt | Nodes: 253 | Edges: 421 | Correctness: 0.0
+
+⚠️ Early stop on math_test_1: exceeded generated token limit.
+
+⚠️ Early stop on math_test_2: exceeded generated token limit.
+
+⚠️ Early stop on math_test_3: exceeded generated token limit.
+
+📦 Packaging Unified Trace [AnswerableMath]...
+💾 Saved charm_unified_dataset/sample_000005.pt | Nodes: 316 | Edges: 496 | Correctness: 0.0
+
+📦 Packaging Unified Trace [AnswerableMath]...
+💾 Saved charm_unified_dataset/sample_000006.pt | Nodes: 734 | Edges: 624 | Correctness: 0.0
+
+⚠️ Early stop on math_test_6: exceeded generated token limit.
+
+📦 Packaging Unified Trace [AnswerableMath]...
+💾 Saved charm_unified_dataset/sample_000007.pt | Nodes: 295 | Edges: 500 | Correctness: 0.0
+
+📦 Packaging Unified Trace [AnswerableMath]...
+💾 Saved charm_unified_dataset/sample_000008.pt | Nodes: 408 | Edges: 475 | Correctness: 0.0
+
+⚠️ Generation failed for math_test_9: [Errno 2] No such file or directory: '/nfs_home/users/vintia/GraphGuard/tokenizer/live_viewer/runtime/state.json.tmp' -> '/nfs_home/users/vintia/GraphGuard/tokenizer/live_viewer/runtime/state.json'

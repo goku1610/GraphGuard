@@ -7,8 +7,8 @@ import torch
 from tqdm import tqdm
 from transformers import StoppingCriteria, StoppingCriteriaList
 
-# Ensure Python can find our modular imports if run directly
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Ensure local tokenizer modules are resolved before site-packages
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from grammar import build_generator
 from extractors.trace_extractor import TraceExtractor

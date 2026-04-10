@@ -1,0 +1,6 @@
+The fast path is not available because one of the required library is not installed. Falling back to torch implementation. To install follow https://github.com/fla-org/flash-linear-attention#installation and https://github.com/Dao-AILab/causal-conv1d
+Loading weights:   0%|          | 0/320 [00:00<?, ?it/s]Loading weights:  28%|██▊       | 88/320 [00:00<00:00, 859.05it/s]Loading weights:  78%|███████▊  | 248/320 [00:00<00:00, 1275.53it/s]Loading weights: 100%|██████████| 320/320 [00:00<00:00, 1290.85it/s]
+Generating Traces:   0%|          | 0/5 [00:00<?, ?it/s]Setting `pad_token_id` to `eos_token_id`:248044 for open-end generation.
+Generating Traces:  20%|██        | 1/5 [00:18<01:15, 18.90s/it]Setting `pad_token_id` to `eos_token_id`:248044 for open-end generation.
+Generating Traces:  40%|████      | 2/5 [01:44<02:54, 58.25s/it]Setting `pad_token_id` to `eos_token_id`:248044 for open-end generation.
+slurmstepd: error: *** JOB 4092 ON csis.cn1 CANCELLED AT 2026-04-10T15:00:52 ***
